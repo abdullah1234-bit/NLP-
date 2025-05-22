@@ -1,1 +1,72 @@
+import nltk
+from nltk.corpus import movie_reviews
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import accuracy_score
 
+# Download necessary NLTK data
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('movie_reviews')
+nltk.download('wordnet')
+# Download the missing punkt_tab resource
+nltk.download('punkt_tab')
+
+# Load the movie reviews dataset
+documents = []
+for category in movie_reviews.categories():
+    for fileid in movie_reviews.fileids(category):
+        documents.append((' '.join(movie_reviews.words(fileid)), category))
+
+# Preprocessing function
+def preprocess_text(text):
+    # Tokenization
+    words = word_tokenize(text.lower())
+
+    # Remove stop words and punctuation, and lemmatize
+    stop_words = set(stopwords.words('english'))
+    lemmatizer = WordNetLemmatizer()
+    filtered_words = [lemmatizer.lemmatize(w) for w in words if w not in stop_words and w.isalnum()]
+
+    return ' '.join(filtered_words)
+
+# Apply preprocessing to the documents
+preprocessed_documents = [(preprocess_text(text), category) for text, category in documents]
+
+# Separate features and labels
+texts = [text for text, category in preprocessed_documents]
+labels = [category for text, category in preprocessed_documents]
+
+# Feature extraction (TF-IDF)
+vectorizer = TfidfVectorizer()
+X = vectorizer.fit_transform(texts)
+
+# Split data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, labels, test_size=0.2, random_state=42)
+
+# Model selection and training (Naive Bayes)
+model = MultinomialNB()
+model.fit(X_train, y_train)
+
+# Model evaluation
+y_pred = model.predict(X_test)
+accuracy = accuracy_score(y_test, y_pred)
+print(f"Accuracy: {accuracy * 100:.2f}%")
+
+test_review = "This movie was absolutely fantastic! The acting was superb, and the plot was engaging and well-written. I highly recommend it."
+
+# Preprocess the test review using your defined function
+preprocessed_test_review = preprocess_text(test_review)
+
+# Transform the preprocessed text using the fitted vectorizer
+# Note: You need to ensure the vectorizer is the same one used for training
+X_test_single = vectorizer.transform([preprocessed_test_review])
+
+# Make a prediction
+prediction = model.predict(X_test_single)
+
+print(f"The model predicted the review is: {prediction[0]}")
